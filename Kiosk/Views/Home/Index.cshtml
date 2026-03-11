@@ -1,0 +1,67 @@
+﻿@model List<Kiosk_Web.Controllers.Sprzet>
+@{
+    ViewData["Title"] = "Panel Główny";
+}
+
+<div class="text-center mt-4">
+    <h1 class="display-4 fw-bold text-primary"> Kiosk IT</h1>
+    <p class="lead">System Wypożyczalni Sprzętu - Wersja 1.0 (ASP.NET Core + MySQL)</p>
+    <hr />
+</div>
+
+@if (ViewBag.Error != null)
+{
+    <div class="alert alert-danger shadow-sm">@ViewBag.Error</div>
+}
+
+<div class="container mt-4">
+    <div class="card shadow border-0">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">📦 Dostępny Magazyn</h5>
+            <span class="badge bg-primary">Stan na żywo</span>
+        </div>
+        <div class="card-body bg-light">
+            <table class="table table-hover align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Model Sprzętu</th>
+                        <th>Numer Seryjny</th>
+                        <th>Status</th>
+                        <th>Akcja</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model != null && Model.Count > 0)
+                    {
+                        foreach (var item in Model)
+                        {
+                            <tr>
+                                <td class="fw-bold">@item.Model</td>
+                                <td><span class="text-muted">@item.NumerSeryjny</span></td>
+                                <td>
+                                    @if (item.Status == "Dostępny")
+                                    {
+                                        <span class="badge bg-success px-3 py-2">@item.Status</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-warning text-dark px-3 py-2">@item.Status</span>
+                                    }
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="alert('Funkcja dodawania do koszyka pojawi się wkrótce!')">🛒 Wypożycz</button>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="4" class="text-center py-4 text-muted">Brak sprzętu w bazie.</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
