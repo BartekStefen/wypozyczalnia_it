@@ -1,0 +1,60 @@
+body {
+    background-color: #f8f9fa;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    padding-top: 70px;
+}
+
+.navbar-custom {
+    background: #1e3c72;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+    .navbar-custom .navbar-brand, .navbar-custom .nav-link {
+        color: #ffffff !important;
+        font-weight: 500;
+    }
+
+        .navbar-custom .nav-link:hover {
+            color: #00d2ff !important;
+        }
+
+    .navbar-custom .active {
+        border-bottom: 2px solid #00d2ff;
+    }
+
+.product-card {
+    border: none;
+    border-radius: 15px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    overflow: hidden;
+    background-color: #ffffff;
+}
+
+    .product-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 15px 30px rgba(0,0,0,0.15) !important;
+    }
+
+.card-price {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #28a745;
+}
+
+.status-badge {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    font-size: 0.9rem;
+    padding: 8px 12px;
+    border-radius: 20px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.admin-header {
+    background: #2c3e50;
+    color: white;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 30px;
+}
