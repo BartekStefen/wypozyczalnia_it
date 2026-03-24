@@ -1,121 +1,51 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useEffect, useState } from 'react';
+import axios from 'axios';
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [sprzet, setSprzet] = useState([]);
+
+  useEffect(() => {
+    
+    axios.get('http://127.0.0.1:8000/api/sprzet')
+      .then(response => {
+        setSprzet(response.data);
+      })
+      .catch(error => console.error("Błąd pobierania danych:", error));
+  }, []);
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+    <div className="container mt-5">
+      <h1 className="text-center mb-4 text-primary">Kiosk IT - Katalog Sprzętu</h1>
+      <div className="row">
+        {sprzet.length > 0 ? (
+          sprzet.map((item) => (
+            <div className="col-md-4 mb-4" key={item.id_egzemplarza}>
+              <div className="card shadow-sm h-100">
+                <div className="card-body">
+                  <h5 className="card-title fw-bold">{item.marka} {item.nazwa_modelu}</h5>
+                  <p className="card-text text-muted small">S/N: {item.numer_seryjny}</p>
+                  <div className="d-flex justify-content-between align-items-center mt-3">
+                    <span className={`badge ${item.status === 'Dostępny' ? 'bg-success' : 'bg-warning'}`}>
+                      {item.status}
+                    </span>
+                    <span className="fw-bold fs-5 text-dark">{item.cena_wypozyczenia_dzien} zł</span>
+                  </div>
+                </div>
+                <div className="card-footer bg-transparent border-top-0 pb-3">
+                  <button className="btn btn-primary w-100 py-2">Wypożycz sprzęt</button>
+                </div>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="text-center">
+            <div className="spinner-border text-primary" role="status"></div>
+            <p className="mt-2">Ładowanie produktów z bazy danych...</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
-export default App
+export default App;
