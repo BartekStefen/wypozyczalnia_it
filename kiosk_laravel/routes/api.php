@@ -1,12 +1,13 @@
 <?php
 
-use Illuminate\Http\Request;
+use App\Http\Controllers\SprzetController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/user', function (Request $request) {
-    return $request->user();
-})->middleware('auth:sanctum');
-
-use App\Http\Controllers\SprzetController;
-
+// Pobieranie listy sprzętu dla strony głównej
 Route::get('/sprzet', [SprzetController::class, 'index']);
+
+// Pobieranie szczegółów jednego przedmiotu
+Route::get('/sprzet/{id}', [SprzetController::class, 'show']);
+
+// Finalizacja zamówienia
+Route::post('/finalizuj', [SprzetController::class, 'finalize']);
