@@ -14,8 +14,8 @@ Route::get('/sprzet/{id}', [SprzetController::class, 'show']);
 Route::get('/kategorie', [SprzetController::class, 'kategorie']);
 
 // ─── Autoryzacja (publiczne) ───────────────────────────────────────────────
-Route::post('/logowanie',   [AuthController::class, 'logowanie']);
-Route::post('/rejestracja', [AuthController::class, 'rejestracja']);
+Route::post('/logowanie',   [AuthController::class, 'login']);
+Route::post('/rejestracja', [AuthController::class, 'register']); // Zmieniono na 'register'
 
 // ─── Zamówienia gości (publiczne) ──────────────────────────────────────────
 Route::post('/finalizuj', [SprzetController::class, 'finalize']);
@@ -26,8 +26,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Profil
     Route::get('/mnie',  [UzytkownikController::class, 'show']);
     Route::put('/mnie',  [UzytkownikController::class, 'update']);
-    Route::post('/wylogowanie', [AuthController::class, 'wylogowanie']);
-    Route::post('/zmien-haslo', [AuthController::class, 'zmienHaslo']);
+    Route::post('/wylogowanie', [AuthController::class, 'logout']); // Zmieniono na 'logout'
+    Route::post('/zmien-haslo', [AuthController::class, 'changePassword']); // Zmieniono na 'changePassword'
 
     // Historia wypożyczeń zalogowanego użytkownika
     Route::get('/moje-wypozyczenia', [UzytkownikController::class, 'mojeWypozyczenia']);

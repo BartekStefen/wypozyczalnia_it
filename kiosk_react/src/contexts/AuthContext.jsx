@@ -3,12 +3,13 @@ import axios from 'axios';
 
 export const AuthContext = createContext(null);
 
+// Globalny baseURL - wszystkie komponenty korzystają z tej konfiguracji
 axios.defaults.baseURL = 'http://127.0.0.1:8000/api';
-axios.defaults.withCredentials = false;
 
+// Interceptor 401 - automatyczne wylogowanie przy wygaśnięciu tokenu
 axios.interceptors.response.use(
-  (res) => res,
-  (err) => {
+  res => res,
+  err => {
     if (err.response?.status === 401) {
       localStorage.removeItem('token');
       delete axios.defaults.headers.common['Authorization'];
@@ -21,6 +22,7 @@ export function AuthProvider({ children }) {
   const [uzytkownik, setUzytkownik] = useState(null);
   const [ladowanie, setLadowanie]   = useState(true);
 
+  // Odczyt tokenu przy starcie - przywrócenie sesji
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -37,6 +39,7 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  // Logowanie - zwraca dane użytkownika z API
   const zaloguj = useCallback(async (email, haslo) => {
     const { data } = await axios.post('/logowanie', { email, password: haslo });
     localStorage.setItem('token', data.token);
@@ -45,6 +48,7 @@ export function AuthProvider({ children }) {
     return data.uzytkownik;
   }, []);
 
+  // Wylogowanie - usuwa token i czyści stan
   const wyloguj = useCallback(async () => {
     try { await axios.post('/wylogowanie'); } catch {}
     localStorage.removeItem('token');
@@ -52,6 +56,7 @@ export function AuthProvider({ children }) {
     setUzytkownik(null);
   }, []);
 
+  // Rejestracja - wysyła dane i zapisuje token
   const zarejestruj = useCallback(async (dane) => {
     const { data } = await axios.post('/rejestracja', dane);
     localStorage.setItem('token', data.token);
@@ -66,10 +71,12 @@ export function AuthProvider({ children }) {
     zaloguj,
     wyloguj,
     zarejestruj,
-    czyAdmin:      uzytkownik?.rola === 'admin',
-    czyZalogowany: !!uzytkownik,
 
-    // Aliasy dla komponentów używających angielskich nazw
+    // Flagi pomocnicze
+    czyZalogowany: !!uzytkownik,
+    czyAdmin:      uzytkownik?.role === 'admin' || uzytkownik?.rola === 'admin',
+
+    // Aliasy angielskie dla komponentów wygenerowanych wcześniej
     user:          uzytkownik,
     isAuthenticated: !!uzytkownik,
     login:         zaloguj,
@@ -86,6 +93,6 @@ export function AuthProvider({ children }) {
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth musi być użyty wewnątrz AuthProvider');
+  if (!ctx) throw new Error('useAuth musi być użyty wewnątrz <AuthProvider>');
   return ctx;
 }

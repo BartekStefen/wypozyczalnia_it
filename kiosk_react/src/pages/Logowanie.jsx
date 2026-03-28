@@ -2,26 +2,38 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 
+function EyeIcon({ visible }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      {visible
+        ? <><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></>
+        : <><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></>
+      }
+    </svg>
+  );
+}
+
 export default function Logowanie() {
   const { zaloguj } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const from = location.state?.from?.pathname || "/panel";
+  const redirectTo = location.state?.from?.pathname || "/panel";
 
-  const [form, setForm] = useState({ email: "", haslo: "" });
-  const [errors, setErrors] = useState({});
-  const [touched, setTouched] = useState({});
-  const [loading, setLoading] = useState(false);
+  const [form, setForm]               = useState({ email: "", password: "" });
+  const [errors, setErrors]           = useState({});
+  const [touched, setTouched]         = useState({});
+  const [loading, setLoading]         = useState(false);
   const [serverError, setServerError] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+  const [showPass, setShowPass]       = useState(false);
 
+  // Walidacja formularza logowania
   const validate = (values) => {
-    const e = {};
-    if (!values.email) e.email = "E-mail jest wymagany";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email)) e.email = "Nieprawidłowy adres e-mail";
-    if (!values.haslo) e.haslo = "Hasło jest wymagane";
-    else if (values.haslo.length < 6) e.haslo = "Hasło musi mieć min. 6 znaków";
-    return e;
+    const errs = {};
+    if (!values.email)    errs.email    = "E-mail jest wymagany";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email))
+                          errs.email    = "Nieprawidłowy format e-mail";
+    if (!values.password) errs.password = "Hasło jest wymagane";
+    return errs;
   };
 
   useEffect(() => {
@@ -29,153 +41,218 @@ export default function Logowanie() {
   }, [form]);
 
   const handleChange = (e) => {
-    setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
+    setForm(p => ({ ...p, [e.target.name]: e.target.value }));
     setServerError("");
   };
 
   const handleBlur = (e) => {
-    setTouched((p) => ({ ...p, [e.target.name]: true }));
+    setTouched(p => ({ ...p, [e.target.name]: true }));
     setErrors(validate(form));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setTouched({ email: true, haslo: true });
-    const validationErrors = validate(form);
-    setErrors(validationErrors);
-    if (Object.keys(validationErrors).length > 0) return;
+    setTouched({ email: true, password: true });
+    const errs = validate(form);
+    setErrors(errs);
+    if (Object.keys(errs).length > 0) return;
 
     setLoading(true);
     try {
-      await zaloguj(form.email, form.haslo);
-      navigate(from, { replace: true });
+      await zaloguj(form.email, form.password);
+      navigate(redirectTo, { replace: true });
     } catch (err) {
-      setServerError(err.response?.data?.message || "Nieprawidłowe dane logowania.");
+      setServerError(err.response?.data?.message || "Nieprawidłowy e-mail lub hasło.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", fontFamily: "'DM Sans', sans-serif" }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&display=swap');
-        .auth-panel-left {
-          flex: 1;
-          background: linear-gradient(160deg, #1a1108 0%, #2d1f0e 40%, #3d2b12 100%);
-          display: flex; flex-direction: column; justify-content: flex-end;
-          padding: 3rem; position: relative; overflow: hidden;
-        }
-        @media (max-width: 768px) { .auth-panel-left { display: none; } }
-        .auth-panel-left::before {
-          content: ''; position: absolute; inset: 0;
-          background: url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23c9a227' fill-opacity='0.04'%3E%3Cpath d='M50 50c0-5.523 4.477-10 10-10s10 4.477 10 10-4.477 10-10 10c0 5.523-4.477 10-10 10s-10-4.477-10-10 4.477-10 10-10zM10 10c0-5.523 4.477-10 10-10s10 4.477 10 10-4.477 10-10 10c0 5.523-4.477 10-10 10S0 25.523 0 20s4.477-10 10-10z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-        }
-        .auth-panel-left .glow-circle { position: absolute; border-radius: 50%; filter: blur(80px); pointer-events: none; }
-        .auth-panel-right {
-          width: 480px; background: #fdfaf5;
-          display: flex; flex-direction: column; justify-content: center;
-          padding: 4rem 3.5rem;
-        }
-        @media (max-width: 768px) { .auth-panel-right { width: 100%; padding: 2.5rem 1.5rem; } }
-        .input-field { position: relative; margin-bottom: 2rem; }
-        .input-field label { display: block; font-size: 0.65rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #92816a; margin-bottom: 0.5rem; }
-        .input-field input { width: 100%; background: transparent; border: none; border-bottom: 2px solid #ddd4c5; outline: none; color: #2d2318; font-family: 'DM Sans', sans-serif; font-size: 0.95rem; padding: 0.75rem 0; transition: border-color 0.3s; }
-        .input-field input:focus { border-color: #c9a227; }
-        .input-field input.has-error { border-color: #e05252; }
-        .field-error { font-size: 0.72rem; color: #e05252; margin-top: 0.4rem; }
-        .btn-submit { width: 100%; background: #2d1f0e; color: #f5e8c8; border: none; padding: 1rem; font-family: 'DM Sans', sans-serif; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase; cursor: pointer; transition: all 0.3s ease; }
-        .btn-submit:hover:not(:disabled) { background: #c9a227; color: #1a1108; }
-        .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
-        .divider { display: flex; align-items: center; gap: 1rem; margin: 1.5rem 0; }
-        .divider span { font-size: 0.7rem; color: #b0a090; letter-spacing: 0.1em; text-transform: uppercase; }
-        .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: #ddd4c5; }
-        .server-error { background: #fef2f2; border-left: 3px solid #e05252; color: #b91c1c; padding: 0.75rem 1rem; font-size: 0.8rem; margin-bottom: 1.5rem; }
-        .password-toggle { position: absolute; right: 0; bottom: 0.75rem; background: none; border: none; cursor: pointer; color: #92816a; padding: 0.25rem; display: flex; align-items: center; }
-        .log-spinner { width: 16px; height: 16px; border: 2px solid transparent; border-top-color: currentColor; border-radius: 50%; animation: logSpin 0.7s linear infinite; display: inline-block; vertical-align: middle; }
-        @keyframes logSpin { to { transform: rotate(360deg); } }
-      `}</style>
+    <div style={styles.root}>
+      <style>{GLOBAL_CSS}</style>
 
-      <div className="auth-panel-left">
-        <div className="glow-circle" style={{ width: 300, height: 300, background: "rgba(201,162,39,0.15)", top: -80, right: -80 }} />
-        <div className="glow-circle" style={{ width: 200, height: 200, background: "rgba(201,162,39,0.08)", bottom: 100, left: -60 }} />
-        <div style={{ position: "relative", zIndex: 1 }}>
-          <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "0.75rem", color: "#c9a227", letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: "1rem" }}>Twoje konto</p>
-          <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "3.2rem", color: "#fdfaf5", lineHeight: 1.1, fontWeight: 400, marginBottom: "1.5rem" }}>
-            Wypożyczalnia<br /><em>premium</em>
+      {/* Lewa dekoracyjna kolumna */}
+      <div style={styles.leftPanel}>
+        <div style={styles.decoGrid} />
+        <div style={styles.decoBubble1} />
+        <div style={styles.decoBubble2} />
+
+        <div style={styles.leftInner}>
+          <div style={styles.brand}>
+            <span style={{ fontSize: "1.5rem" }}>⚡</span>
+            <span style={styles.brandText}>Kiosk IT</span>
+          </div>
+
+          <h2 style={styles.heroHeading}>
+            Wypożycz sprzęt<br/>szybko i wygodnie
           </h2>
-          <p style={{ color: "#92816a", fontSize: "0.875rem", lineHeight: 1.7, maxWidth: 320 }}>
-            Zaloguj się, aby zarządzać swoimi wypożyczeniami, przeglądać historię zamówień i korzystać z ofert specjalnych.
+          <p style={styles.heroSub}>
+            Zaloguj się, aby zarządzać wypożyczeniami, śledzić zamówienia i korzystać z ofert specjalnych.
           </p>
-          <div style={{ display: "flex", gap: "1.5rem", marginTop: "2.5rem" }}>
-            {["Szybkie zamówienia", "Historia", "Ulubione"].map((item) => (
-              <div key={item} style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#c9a227" }} />
-                <span style={{ color: "#92816a", fontSize: "0.75rem", letterSpacing: "0.05em" }}>{item}</span>
+
+          {/* Statystyki promocyjne */}
+          <div style={styles.statsRow}>
+            {[
+              { val: "500+", label: "Urządzeń" },
+              { val: "2400", label: "Klientów" },
+              { val: "4.9★", label: "Ocena" },
+            ].map(({ val, label }) => (
+              <div key={label} style={styles.statBox}>
+                <div style={styles.statVal}>{val}</div>
+                <div style={styles.statLabel}>{label}</div>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      <div className="auth-panel-right">
-        <div style={{ marginBottom: "2.5rem" }}>
-          <p style={{ fontSize: "0.65rem", fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "#92816a", marginBottom: "0.5rem" }}>Witaj ponownie</p>
-          <h1 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "2.4rem", color: "#1a1108", fontWeight: 400, lineHeight: 1.1 }}>Zaloguj się</h1>
-        </div>
+      {/* Prawa kolumna - formularz */}
+      <div style={styles.rightPanel}>
+        <div style={styles.formCard}>
 
-        {serverError && <div className="server-error">{serverError}</div>}
-
-        <form onSubmit={handleSubmit} noValidate>
-          <div className="input-field">
-            <label htmlFor="email">Adres e-mail</label>
-            <input id="email" name="email" type="email" autoComplete="email" value={form.email}
-              onChange={handleChange} onBlur={handleBlur}
-              className={touched.email && errors.email ? "has-error" : ""}
-              placeholder="twoj@email.pl"
-            />
-            {touched.email && errors.email && <p className="field-error">{errors.email}</p>}
+          <div style={{ marginBottom: "2rem" }}>
+            <p style={styles.tagline}>Witaj ponownie 👋</p>
+            <h1 style={styles.formTitle}>Zaloguj się</h1>
           </div>
 
-          <div className="input-field">
-            <label htmlFor="haslo">Hasło</label>
-            <div style={{ position: "relative" }}>
-              <input id="haslo" name="haslo" type={showPassword ? "text" : "password"}
-                autoComplete="current-password" value={form.haslo}
-                onChange={handleChange} onBlur={handleBlur}
-                className={touched.haslo && errors.haslo ? "has-error" : ""}
-                placeholder="••••••••" style={{ paddingRight: "2.5rem" }}
-              />
-              <button type="button" className="password-toggle" onClick={() => setShowPassword((p) => !p)}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  {showPassword
-                    ? <><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></>
-                    : <><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></>
-                  }
-                </svg>
-              </button>
+          {serverError && (
+            <div style={styles.errorBox}>
+              <span>⚠️</span> {serverError}
             </div>
-            {touched.haslo && errors.haslo && <p className="field-error">{errors.haslo}</p>}
+          )}
+
+          <form onSubmit={handleSubmit} noValidate>
+            {/* Pole e-mail */}
+            <div style={{ marginBottom: "1.25rem" }}>
+              <label style={styles.label}>Adres e-mail</label>
+              <input
+                name="email" type="email"
+                className={`log-input ${touched.email && errors.email ? "log-input-err" : ""}`}
+                value={form.email} onChange={handleChange} onBlur={handleBlur}
+                placeholder="jan.kowalski@email.pl" autoComplete="email" autoFocus
+              />
+              {touched.email && errors.email && <p style={styles.fieldError}>{errors.email}</p>}
+            </div>
+
+            {/* Pole hasło */}
+            <div style={{ marginBottom: "0.75rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.4rem" }}>
+                <label style={styles.label}>Hasło</label>
+                <Link to="/zapomniane-haslo" style={{ fontSize: "0.78rem", color: "#2563eb", fontWeight: 600, textDecoration: "none" }}>
+                  Zapomniałeś hasła?
+                </Link>
+              </div>
+              <div style={{ position: "relative" }}>
+                <input
+                  name="password" type={showPass ? "text" : "password"}
+                  className={`log-input ${touched.password && errors.password ? "log-input-err" : ""}`}
+                  style={{ paddingRight: "3rem" }}
+                  value={form.password} onChange={handleChange} onBlur={handleBlur}
+                  placeholder="Twoje hasło" autoComplete="current-password"
+                />
+                <button type="button" className="log-eye" onClick={() => setShowPass(p => !p)}>
+                  <EyeIcon visible={showPass} />
+                </button>
+              </div>
+              {touched.password && errors.password && <p style={styles.fieldError}>{errors.password}</p>}
+            </div>
+
+            <button type="submit" className="log-btn" disabled={loading} style={{ marginTop: "1.5rem" }}>
+              {loading
+                ? <span className="log-spinner" />
+                : "Zaloguj się"
+              }
+            </button>
+          </form>
+
+          {/* Separator */}
+          <div style={styles.divider}>
+            <span style={styles.dividerLine} />
+            <span style={styles.dividerText}>lub</span>
+            <span style={styles.dividerLine} />
           </div>
 
-          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "1.5rem", marginTop: "-1rem" }}>
-            <Link to="/zapomniane-haslo" style={{ fontSize: "0.72rem", color: "#92816a", textDecoration: "none" }}>Zapomniałeś hasła?</Link>
-          </div>
-
-          <button type="submit" className="btn-submit" disabled={loading}>
-            {loading ? <><span className="log-spinner" /> &nbsp;Logowanie…</> : "Zaloguj się"}
-          </button>
-        </form>
-
-        <div className="divider"><span>lub</span></div>
-
-        <p style={{ textAlign: "center", fontSize: "0.8rem", color: "#92816a" }}>
-          Nie masz konta?{" "}
-          <Link to="/rejestracja" style={{ color: "#2d1f0e", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid #c9a227" }}>
-            Zarejestruj się
-          </Link>
-        </p>
+          <p style={{ textAlign: "center", fontSize: "0.875rem", color: "#64748b", margin: 0 }}>
+            Nie masz jeszcze konta?{" "}
+            <Link to="/rejestracja" style={{ color: "#2563eb", fontWeight: 700, textDecoration: "none" }}>
+              Zarejestruj się za darmo
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );
 }
+
+const styles = {
+  root:       { minHeight: "100vh", display: "flex", fontFamily: "'Plus Jakarta Sans', sans-serif" },
+  leftPanel:  { flex: 1, background: "linear-gradient(145deg, #0f172a 0%, #1e3a8a 50%, #1d4ed8 100%)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" },
+  leftInner:  { position: "relative", zIndex: 1, padding: "3rem", maxWidth: 420 },
+  brand:      { display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "3rem" },
+  brandText:  { fontFamily: "'Syne', sans-serif", fontSize: "1.5rem", fontWeight: 800, color: "#fff", letterSpacing: "-0.5px" },
+  heroHeading:{ fontFamily: "'Syne', sans-serif", fontSize: "2.6rem", fontWeight: 800, color: "#fff", lineHeight: 1.15, margin: "0 0 1rem" },
+  heroSub:    { fontSize: "1rem", color: "rgba(255,255,255,0.72)", lineHeight: 1.7, margin: "0 0 2.5rem" },
+  statsRow:   { display: "flex", gap: "1rem" },
+  statBox:    { flex: 1, background: "rgba(255,255,255,0.08)", borderRadius: "12px", padding: "1rem", textAlign: "center", backdropFilter: "blur(4px)" },
+  statVal:    { fontFamily: "'Syne', sans-serif", fontSize: "1.4rem", fontWeight: 800, color: "#fff", lineHeight: 1 },
+  statLabel:  { fontSize: "0.72rem", color: "rgba(255,255,255,0.6)", marginTop: "0.25rem" },
+  decoGrid:   { position: "absolute", inset: 0, backgroundImage: "radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px)", backgroundSize: "28px 28px" },
+  decoBubble1:{ position: "absolute", width: 400, height: 400, borderRadius: "50%", background: "rgba(255,255,255,0.03)", top: -150, right: -150 },
+  decoBubble2:{ position: "absolute", width: 250, height: 250, borderRadius: "50%", background: "rgba(255,255,255,0.03)", bottom: -80, left: -80 },
+
+  rightPanel: { width: 500, background: "#f8fafc", display: "flex", alignItems: "center", justifyContent: "center", padding: "2.5rem 2rem" },
+  formCard:   { width: "100%", maxWidth: 400 },
+  tagline:    { fontSize: "0.875rem", color: "#64748b", fontWeight: 500, margin: "0 0 0.3rem" },
+  formTitle:  { fontFamily: "'Syne', sans-serif", fontSize: "2.2rem", fontWeight: 800, color: "#0f172a", margin: 0 },
+  label:      { display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#374151", letterSpacing: "0.05em", textTransform: "uppercase" },
+  errorBox:   { background: "#fef2f2", border: "1px solid #fecaca", color: "#dc2626", borderRadius: "10px", padding: "0.75rem 1rem", fontSize: "0.85rem", marginBottom: "1.25rem", display: "flex", alignItems: "center", gap: "0.5rem" },
+  fieldError: { color: "#ef4444", fontSize: "0.72rem", marginTop: "0.3rem", fontWeight: 600 },
+  divider:    { display: "flex", alignItems: "center", gap: "0.75rem", margin: "1.5rem 0" },
+  dividerLine:{ flex: 1, height: 1, background: "#e2e8f0" },
+  dividerText:{ fontSize: "0.78rem", color: "#94a3b8", fontWeight: 600 },
+};
+
+const GLOBAL_CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+
+  .log-input {
+    width: 100%; padding: 0.75rem 1rem;
+    border: 1.5px solid #e2e8f0; border-radius: 10px;
+    font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.9rem;
+    color: #0f172a; background: #fff; outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-sizing: border-box;
+  }
+  .log-input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+  .log-input-err { border-color: #ef4444 !important; }
+  .log-btn {
+    width: 100%; padding: 0.9rem;
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    color: #fff; border: none; border-radius: 10px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 0.95rem; font-weight: 700; cursor: pointer;
+    transition: all 0.2s; display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 12px rgba(37,99,235,0.3);
+  }
+  .log-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #1d4ed8, #1e40af);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(37,99,235,0.4);
+  }
+  .log-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+  .log-eye {
+    position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%);
+    background: none; border: none; cursor: pointer; color: #94a3b8; display: flex;
+  }
+  .log-spinner {
+    width: 22px; height: 22px;
+    border: 2.5px solid rgba(255,255,255,0.4);
+    border-top-color: #fff; border-radius: 50%;
+    animation: logSpin 0.7s linear infinite;
+  }
+  @keyframes logSpin { to { transform: rotate(360deg); } }
+  @media (max-width: 768px) {
+    .log-left { display: none; }
+  }
+`;
