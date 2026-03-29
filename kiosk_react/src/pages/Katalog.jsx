@@ -2,7 +2,6 @@ import { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 
-// Stałe
 const SORT_OPTIONS = [
   { value: 'default',    label: 'Domyślnie' },
   { value: 'price_asc',  label: 'Cena: rosnąco' },
@@ -12,18 +11,18 @@ const SORT_OPTIONS = [
 
 const FILTERS = ['Wszystkie', 'Dostępny', 'Wypożyczony', 'Serwis'];
 
-// Ikona emoji dla sprzętu
+// Zwraca emoji pasujące do nazwy sprzętu
 function getEquipmentIcon(marka = '', model = '') {
   const t = `${marka} ${model}`.toLowerCase();
   if (t.includes('drone') || t.includes('dji') || t.includes('mavic') || t.includes('mini 3')) return '🚁';
   if (t.includes('laptop') || t.includes('macbook') || t.includes('thinkpad') || t.includes('latitude') || t.includes('elitebook') || t.includes('katana')) return '💻';
   if (t.includes('tablet') || t.includes('ipad') || t.includes('galaxy tab')) return '📱';
-  if (t.includes('sony') || t.includes('canon') || t.includes('eos') || t.includes('a7') || t.includes('aparat') || t.includes('camera') || t.includes('gopro') || t.includes('hero')) return '📷';
+  if (t.includes('sony') || t.includes('canon') || t.includes('eos') || t.includes('a7') || t.includes('aparat') || t.includes('gopro') || t.includes('hero')) return '📷';
   if (t.includes('projektor') || t.includes('epson') || t.includes('benq')) return '📽️';
   if (t.includes('monitor') || t.includes('ultrasharp')) return '🖥️';
   if (t.includes('rode') || t.includes('mikrofon') || t.includes('audio')) return '🎙️';
-  if (t.includes('gimbal') || t.includes('rs 3') || t.includes('statyw') || t.includes('manfrotto') || t.includes('befree')) return '🎬';
-  if (t.includes('godox') || t.includes('aputure') || t.includes('led') || t.includes('sl-')) return '💡';
+  if (t.includes('gimbal') || t.includes('rs 3') || t.includes('statyw') || t.includes('manfrotto')) return '🎬';
+  if (t.includes('godox') || t.includes('aputure') || t.includes('led')) return '💡';
   if (t.includes('sigma') || t.includes('obiektyw') || t.includes('85mm')) return '🔭';
   return '🖥️';
 }
@@ -42,6 +41,7 @@ function StatusBadge({ status }) {
   );
 }
 
+// Szkielet karty ładowania
 function SkeletonCard() {
   return (
     <div style={{ background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '16px', overflow: 'hidden' }}>
@@ -55,9 +55,9 @@ function SkeletonCard() {
 }
 
 function EquipmentCard({ item, index }) {
-  const navigate = useNavigate();
+  const navigate  = useNavigate();
   const available = item.status === 'Dostępny';
-  const icon = getEquipmentIcon(item.marka, item.nazwa_modelu);
+  const icon      = getEquipmentIcon(item.marka, item.nazwa_modelu);
 
   return (
     <div
@@ -66,7 +66,6 @@ function EquipmentCard({ item, index }) {
       onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-6px)'; e.currentTarget.style.borderColor = '#2563eb'; e.currentTarget.style.boxShadow = '0 16px 32px rgba(37,99,235,0.15)'; }}
       onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.boxShadow = 'none'; }}
     >
-      {/* Obrazek/placeholder */}
       <div style={{ height: 180, background: 'linear-gradient(135deg, #eff6ff, #dbeafe)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '4.5rem', position: 'relative' }}>
         {icon}
         <div style={{ position: 'absolute', top: '0.75rem', right: '0.75rem' }}>
@@ -74,7 +73,6 @@ function EquipmentCard({ item, index }) {
         </div>
       </div>
 
-      {/* Treść karty */}
       <div style={{ padding: '1.25rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
         <div style={{ fontFamily: 'Syne, sans-serif', fontSize: '1rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.25rem', lineHeight: 1.3 }}>
           {item.marka} {item.nazwa_modelu}
@@ -93,7 +91,6 @@ function EquipmentCard({ item, index }) {
         </div>
       </div>
 
-      {/* Przycisk */}
       <div style={{ padding: '0 1.25rem 1.25rem' }}>
         <button
           style={{ width: '100%', padding: '0.75rem', background: available ? 'linear-gradient(135deg, #2563eb, #1d4ed8)' : '#f1f5f9', color: available ? '#fff' : '#94a3b8', border: 'none', borderRadius: '10px', fontFamily: 'Plus Jakarta Sans, sans-serif', fontSize: '0.875rem', fontWeight: 700, cursor: available ? 'pointer' : 'not-allowed', transition: 'all 0.2s' }}
@@ -109,7 +106,6 @@ function EquipmentCard({ item, index }) {
 
 const GLOBAL_CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
-  :root { --brand: #2563eb; --brand-dark: #1d4ed8; }
   body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f8fafc; }
   @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes katShimmer { 0%,100% { background-position: 200% 0; } 50% { background-position: -200% 0; } }
@@ -135,61 +131,62 @@ const GLOBAL_CSS = `
 `;
 
 export default function Katalog() {
-  const navigate    = useNavigate();
-  const location    = useLocation();
-  const [sprzet, setSprzet]           = useState([]);
-  const [isLoading, setIsLoading]     = useState(true);
-  const [error, setError]             = useState(null);
-  const [activeFilter, setFilter]     = useState('Wszystkie');
-  const [sortBy, setSortBy]           = useState('default');
-  const [searchQuery, setSearch]      = useState('');
+  const navigate  = useNavigate();
+  const location  = useLocation();
+
+  const [sprzet, setSprzet]             = useState([]);
+  const [isLoading, setIsLoading]       = useState(true);
+  const [error, setError]               = useState(null);
+  const [activeFilter, setFilter]       = useState('Wszystkie');
+  const [sortBy, setSortBy]             = useState('default');
+  const [searchQuery, setSearch]        = useState('');
   const [activeCategoryId, setCategory] = useState(null);
 
-  // Wczytaj parametry z URL (kategoria, szukaj z MegaMenu)
+  // Odczytaj parametry URL (kategoria, szukaj — przekazane przez MegaMenu)
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const katId  = params.get('kategoria');
     const szukaj = params.get('szukaj');
-
-    if (katId) setCategory(parseInt(katId));
+    if (katId)  setCategory(parseInt(katId));
     if (szukaj) setSearch(szukaj);
   }, [location.search]);
 
-  // Pobierz dane z API (przekaż filtry jako params)
+  // Pobierz sprzęt z API przy zmianie kategorii
   useEffect(() => {
     setIsLoading(true);
     setError(null);
 
     const params = {};
-    if (activeCategoryId) params.kategoria = activeCategoryId;
-    if (searchQuery.trim()) params.szukaj = searchQuery.trim();
+    if (activeCategoryId)   params.kategoria = activeCategoryId;
+    if (searchQuery.trim()) params.szukaj    = searchQuery.trim();
 
-    axios.get('http://127.0.0.1:8000/api/sprzet', { params })
+    // Używa baseURL ustawionego w AuthContext — bez hardkodowanego adresu
+    axios.get('/sprzet', { params })
       .then(r => setSprzet(r.data))
       .catch(() => setError('Nie udało się pobrać danych. Sprawdź połączenie z API.'))
       .finally(() => setIsLoading(false));
   }, [activeCategoryId]);
 
-  // Wyszukiwanie z debounce (lokalne + odśwież z API jeśli puste)
+  // Wyszukiwanie z debounce 350ms — odpytuje API zamiast filtrować tylko lokalnie
   useEffect(() => {
     const timer = setTimeout(() => {
       const params = {};
-      if (activeCategoryId) params.kategoria = activeCategoryId;
-      if (searchQuery.trim()) params.szukaj = searchQuery.trim();
+      if (activeCategoryId)   params.kategoria = activeCategoryId;
+      if (searchQuery.trim()) params.szukaj    = searchQuery.trim();
 
-      axios.get('http://127.0.0.1:8000/api/sprzet', { params })
+      axios.get('/sprzet', { params })
         .then(r => setSprzet(r.data))
         .catch(() => {});
     }, 350);
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Filtrowanie + sortowanie po stronie klienta
+  // Filtrowanie i sortowanie po stronie klienta (bez dodatkowych requestów)
   const filteredSprzet = useMemo(() => {
     let result = sprzet.filter(item => {
       const matchFilter = activeFilter === 'Wszystkie' || item.status === activeFilter;
-      const q = searchQuery.toLowerCase();
-      const matchLocal = !q || `${item.marka} ${item.nazwa_modelu} ${item.numer_seryjny}`.toLowerCase().includes(q);
+      const q           = searchQuery.toLowerCase();
+      const matchLocal  = !q || `${item.marka} ${item.nazwa_modelu} ${item.numer_seryjny}`.toLowerCase().includes(q);
       return matchFilter && matchLocal;
     });
 
@@ -205,7 +202,7 @@ export default function Katalog() {
 
   useEffect(() => {
     const tag = document.createElement('style');
-    tag.id = 'katalog-styles';
+    tag.id    = 'katalog-styles';
     tag.textContent = GLOBAL_CSS;
     if (!document.getElementById('katalog-styles')) document.head.appendChild(tag);
     return () => { const el = document.getElementById('katalog-styles'); if (el) el.remove(); };
@@ -213,7 +210,6 @@ export default function Katalog() {
 
   return (
     <>
-      {/* Hero */}
       <div className="kat-hero">
         <h1>Znajdź sprzęt dla siebie</h1>
         <p>Profesjonalne urządzenia do pracy i rozrywki. Wypożycz szybko i wygodnie.</p>
@@ -224,7 +220,6 @@ export default function Katalog() {
         </div>
       </div>
 
-      {/* Filtry */}
       <div className="kat-filters">
         <div className="kat-search-wrap">
           <svg className="kat-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -250,7 +245,6 @@ export default function Katalog() {
         </select>
       </div>
 
-      {/* Pasek wyników */}
       {!isLoading && !error && (
         <div className="kat-toolbar">
           <p className="kat-count">
@@ -260,7 +254,6 @@ export default function Katalog() {
         </div>
       )}
 
-      {/* Siatka kart */}
       <div className="kat-grid">
         {isLoading ? (
           Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)

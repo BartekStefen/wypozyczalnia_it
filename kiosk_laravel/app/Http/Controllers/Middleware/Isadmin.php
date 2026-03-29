@@ -7,8 +7,13 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Middleware sprawdzający czy zalogowany użytkownik ma rolę 'admin'.
- * Używany na grupie tras /api/admin/*.
+ * Middleware IsAdmin — chroni trasy panelu administratora.
+ *
+ * Sprawdza pole `role` w tabeli uzytkownicy po autoryzacji przez Sanctum.
+ * Jeśli użytkownik nie ma roli 'admin' lub nie jest zalogowany → 403.
+ *
+ * Middleware działa TYLKO wewnątrz grupy auth:sanctum — token jest już
+ * zweryfikowany zanim ten middleware dostanie żądanie.
  */
 class IsAdmin
 {
