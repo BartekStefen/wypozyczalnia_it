@@ -6,13 +6,19 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Kontroler adresów użytkownika — CRUD na tabeli adresy_uzytkownikow.
+ * Kontroler adresów — zarządza adresami odbioru/zwrotu sprzętu użytkownika.
+ *
+ * Tabela adresy_uzytkownikow nie istnieje w oryginalnym schemacie —
+ * musi być utworzona przez migrację migracja_kary_adresy.sql.
+ *
  * Każdy użytkownik może mieć wiele adresów, jeden oznaczony jako domyślny.
+ * Logika domyślności: przy zapisie pierwszego adresu automatycznie staje się domyślny.
+ * Zmiana domyślnego: reset wszystkich, ustawienie nowego (dwa UPDATE w jednej transakcji).
  */
 class AdresController extends Controller
 {
-    // Zwraca wszystkie adresy zalogowanego użytkownika
-    public function index(Request $request): \Illuminate\Http\JsonResponse
+    // Zwraca adresy zalogowanego użytkownika posortowane: domyślny pierwszy
+    public function index(Request $request)
     {
         $adresy = DB::table('adresy_uzytkownikow')
             ->where('id_uzytk', $request->user()->id)
@@ -23,8 +29,8 @@ class AdresController extends Controller
         return response()->json($adresy);
     }
 
-    // Dodaje nowy adres — jeśli pierwszy, automatycznie ustawia jako domyślny
-    public function store(Request $request): \Illuminate\Http\JsonResponse
+    // Dodaje nowy adres — pierwszy adres użytkownika staje się automatycznie domyślnym
+    public function store(Request $request)
     {
         $request->validate([
             'etykieta'    => 'nullable|string|max:50',
@@ -33,9 +39,7 @@ class AdresController extends Controller
             'miasto'      => 'required|string|max:80',
         ]);
 
-        $uid = $request->user()->id;
-
-        // Sprawdź czy użytkownik ma już jakieś adresy
+        $uid        = $request->user()->id;
         $ileAdresow = DB::table('adresy_uzytkownikow')->where('id_uzytk', $uid)->count();
 
         $id = DB::table('adresy_uzytkownikow')->insertGetId([
@@ -44,7 +48,6 @@ class AdresController extends Controller
             'ulica'        => $request->ulica,
             'kod_pocztowy' => $request->kod_pocztowy,
             'miasto'       => $request->miasto,
-            // Pierwszy adres staje się automatycznie domyślnym
             'domyslny'     => $ileAdresow === 0 ? 1 : 0,
             'created_at'   => now(),
         ]);
@@ -52,8 +55,8 @@ class AdresController extends Controller
         return response()->json(['id_adresu' => $id, 'message' => 'Adres dodany.'], 201);
     }
 
-    // Usuwa adres należący do zalogowanego użytkownika (sprawdza własność)
-    public function destroy(Request $request, int $id): \Illuminate\Http\JsonResponse
+    // Usuwa adres — weryfikacja własności chroni przed usunięciem cudzego adresu
+    public function destroy(Request $request, int $id)
     {
         $usunieto = DB::table('adresy_uzytkownikow')
             ->where('id_adresu', $id)
@@ -67,24 +70,23 @@ class AdresController extends Controller
         return response()->json(['message' => 'Adres usunięty.']);
     }
 
-    // Ustawia wskazany adres jako domyślny (odznacza pozostałe)
-    public function ustawDomyslny(Request $request, int $id): \Illuminate\Http\JsonResponse
+    // Ustawia adres domyślny — reset wszystkich, potem SET dla wybranego
+    public function ustawDomyslny(Request $request, int $id)
     {
         $uid = $request->user()->id;
 
-        // Upewnij się że adres należy do użytkownika
         $adres = DB::table('adresy_uzytkownikow')
-            ->where('id_adresu', $id)
-            ->where('id_uzytk', $uid)
-            ->first();
+            ->where('id_adresu', $id)->where('id_uzytk', $uid)->first();
 
         if (!$adres) {
             return response()->json(['message' => 'Adres nie istnieje.'], 404);
         }
 
-        // Odznacz wszystkie adresy użytkownika, następnie ustaw nowy domyślny
-        DB::table('adresy_uzytkownikow')->where('id_uzytk', $uid)->update(['domyslny' => 0]);
-        DB::table('adresy_uzytkownikow')->where('id_adresu', $id)->update(['domyslny' => 1]);
+        // Transakcja — obie operacje muszą się wykonać razem
+        DB::transaction(function () use ($uid, $id) {
+            DB::table('adresy_uzytkownikow')->where('id_uzytk', $uid)->update(['domyslny' => 0]);
+            DB::table('adresy_uzytkownikow')->where('id_adresu', $id)->update(['domyslny' => 1]);
+        });
 
         return response()->json(['message' => 'Adres domyślny zaktualizowany.']);
     }

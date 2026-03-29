@@ -6,34 +6,37 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Kontroler ulubionych — CRUD dla listy ulubionych sprzętu użytkownika.
+ * Kontroler ulubionych — zarządza listą obserwowanego sprzętu użytkownika.
+ *
+ * Klucz unikalny w tabeli ulubione (uzytkownik_id, sprzet_id) zapewnia
+ * że ten sam egzemplarz nie może być dodany dwa razy — sprawdzamy to
+ * wcześniej żeby zwrócić czytelny komunikat zamiast błędu DB.
  */
 class UlubioneController extends Controller
 {
-    // Lista ulubionych zalogowanego użytkownika z danymi sprzętu
+    // Zwraca ulubione zalogowanego użytkownika z pełnymi danymi sprzętu i kategorii
     public function index(Request $request)
     {
         $uid = $request->user()->id;
 
-        $ulubione = DB::table('ulubione')
-            ->join('egzemplarze',   'ulubione.sprzet_id', '=', 'egzemplarze.id_egzemplarza')
-            ->join('modele_sprzetu','egzemplarze.id_modelu', '=', 'modele_sprzetu.id_modelu')
-            ->leftJoin('kategorie_modele', 'egzemplarze.id_modelu', '=', 'kategorie_modele.id_modelu')
-            ->leftJoin('kategorie_sprzetu', 'kategorie_modele.id_kategorii', '=', 'kategorie_sprzetu.id_kategorii')
-            ->where('ulubione.uzytkownik_id', $uid)
+        $ulubione = DB::table('ulubione as u')
+            ->join('egzemplarze as e',    'u.sprzet_id',    '=', 'e.id_egzemplarza')
+            ->join('modele_sprzetu as ms','e.id_modelu',    '=', 'ms.id_modelu')
+            ->leftJoin('kategorie_modele as km',  'e.id_modelu',      '=', 'km.id_modelu')
+            ->leftJoin('kategorie_sprzetu as ks', 'km.id_kategorii',  '=', 'ks.id_kategorii')
+            ->where('u.uzytkownik_id', $uid)
             ->select(
-                'ulubione.id',
-                'ulubione.sprzet_id',
-                'egzemplarze.id_egzemplarza',
-                DB::raw("CONCAT(modele_sprzetu.marka, ' ', modele_sprzetu.nazwa_modelu) as nazwa"),
-                DB::raw("CASE WHEN egzemplarze.status = 'Dostępny' THEN 1 ELSE 0 END as dostepny"),
-                DB::raw("CONCAT(FORMAT(egzemplarze.cena_wypozyczenia_dzien, 2), ' zł / dzień') as cena"),
-                DB::raw("MIN(kategorie_sprzetu.nazwa) as kategoria")
+                'u.id',
+                'u.sprzet_id',
+                'e.id_egzemplarza',
+                DB::raw("CONCAT(ms.marka, ' ', ms.nazwa_modelu) as nazwa"),
+                DB::raw("CASE WHEN e.status = 'Dostępny' THEN 1 ELSE 0 END as dostepny"),
+                DB::raw("CONCAT(FORMAT(e.cena_wypozyczenia_dzien, 2), ' zł / dzień') as cena"),
+                DB::raw('MIN(ks.nazwa) as kategoria')
             )
             ->groupBy(
-                'ulubione.id', 'ulubione.sprzet_id', 'egzemplarze.id_egzemplarza',
-                'modele_sprzetu.marka', 'modele_sprzetu.nazwa_modelu',
-                'egzemplarze.status', 'egzemplarze.cena_wypozyczenia_dzien'
+                'u.id', 'u.sprzet_id', 'e.id_egzemplarza',
+                'ms.marka', 'ms.nazwa_modelu', 'e.status', 'e.cena_wypozyczenia_dzien'
             )
             ->get()
             ->map(function ($item) {
@@ -44,14 +47,15 @@ class UlubioneController extends Controller
         return response()->json($ulubione);
     }
 
-    // Dodaj do ulubionych (ignoruje duplikaty)
+    // Dodaje egzemplarz do ulubionych — zwraca 409 jeśli już jest na liście
     public function store(Request $request)
     {
-        $request->validate(['sprzet_id' => 'required|integer']);
+        $request->validate([
+            'sprzet_id' => 'required|integer|exists:egzemplarze,id_egzemplarza',
+        ]);
 
         $uid = $request->user()->id;
 
-        // Sprawdź duplikat
         $exists = DB::table('ulubione')
             ->where('uzytkownik_id', $uid)
             ->where('sprzet_id', $request->sprzet_id)
@@ -70,7 +74,7 @@ class UlubioneController extends Controller
         return response()->json(['id' => $id, 'message' => 'Dodano do ulubionych.'], 201);
     }
 
-    // Usuń z ulubionych (tylko własne)
+    // Usuwa z ulubionych — sprawdza własność rekordu przed usunięciem
     public function destroy(Request $request, $id)
     {
         DB::table('ulubione')

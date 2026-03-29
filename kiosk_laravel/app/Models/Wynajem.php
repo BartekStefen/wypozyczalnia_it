@@ -5,6 +5,18 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * Model wynajmu — blok kalendarza rezerwacji egzemplarza.
+ *
+ * Tabela `wynajmy` służy wyłącznie do sprawdzania dostępności dat —
+ * nie zastępuje wypozyczenia, tylko blokuje termin.
+ *
+ * Przepływ tworzenia:
+ *   finalize() → INSERT wypozyczenia → INSERT wynajmy (blokada) → UPDATE egzemplarze.status
+ *
+ * Przy anulowaniu lub zakończeniu:
+ *   updateRentalStatus() → wynajmy.status = 'Anulowany' → egzemplarze.status = 'Dostępny'
+ */
 class Wynajem extends Model
 {
     protected $table    = 'wynajmy';
@@ -24,19 +36,27 @@ class Wynajem extends Model
         'data_koniec' => 'date',
     ];
 
-    // Relacja do egzemplarza sprzętu
+    // Egzemplarz którego termin jest zablokowany
     public function egzemplarz(): BelongsTo
     {
         return $this->belongsTo(Egzemplarz::class, 'id_egzemplarza', 'id_egzemplarza');
     }
 
-    // Relacja do użytkownika (null jeśli gość)
+    // Użytkownik który dokonał rezerwacji (null dla gości)
     public function uzytkownik(): BelongsTo
     {
         return $this->belongsTo(Uzytkownik::class, 'id_uzytkownika', 'id');
     }
 
-    // Sprawdza czy wynajem koliduje z podanym zakresem dat
+    /**
+     * Sprawdza kolizję terminu — używana w SprzetController::finalize()
+     * i checkAvailability() zamiast duplikowania logiki SQL.
+     *
+     * Trzy przypadki kolizji (A = istniejąca, B = nowa):
+     *   1. data_start B wpada w zakres A
+     *   2. data_koniec B wpada w zakres A
+     *   3. B całkowicie obejmuje A (A jest wewnątrz B)
+     */
     public static function czyKolizja(int $idEgzemplarza, string $start, string $koniec): bool
     {
         return self::where('id_egzemplarza', $idEgzemplarza)

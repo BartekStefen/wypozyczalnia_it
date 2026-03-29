@@ -2,18 +2,26 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
 /**
- * Model użytkownika systemu Kiosk IT.
- * Mapuje tabelę `uzytkownicy` z angielskimi kolumnami.
- * Implementuje HasApiTokens dla autoryzacji przez Sanctum.
+ * Model użytkownika — dziedziczy po Authenticatable (nie po Model).
+ *
+ * Authenticatable dostarcza metody wymagane przez Laravel Auth:
+ *   getAuthIdentifier(), getAuthPassword(), getRememberToken() itd.
+ *
+ * Bez Authenticatable Sanctum nie może poprawnie powiązać tokenu
+ * z użytkownikiem przy weryfikacji żądań auth:sanctum.
+ *
+ * HasApiTokens — trait Sanctum dodający createToken(), tokens() i currentAccessToken().
+ * Notifiable — umożliwia wysyłanie powiadomień e-mail (np. o karze).
  */
-class Uzytkownik extends Model
+class Uzytkownik extends Authenticatable
 {
-    use HasApiTokens;
+    use HasApiTokens, Notifiable;
 
     protected $table      = 'uzytkownicy';
     protected $primaryKey = 'id';
@@ -27,36 +35,42 @@ class Uzytkownik extends Model
         'role',
     ];
 
-    // Ukryj wrażliwe pola w odpowiedziach JSON
-    protected $hidden = ['password'];
+    protected $hidden = ['password', 'remember_token'];
 
     protected $casts = [
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
 
-    // Sanctum wymaga metody getAuthPassword() jeśli kolumna != 'password'
-    // Tu kolumna to 'password' więc domyślna implementacja działa poprawnie.
-
-    // Relacja: jeden użytkownik → wiele wypożyczeń
+    // Relacja: jeden użytkownik → wiele wypożyczeń (przez id_uzytkownika)
     public function wypozyczenia(): HasMany
     {
-        return $this->hasMany(\Illuminate\Support\Facades\DB::table('wypozyczenia'), 'id_uzytkownika', 'id');
+        return $this->hasMany(Wypozyczenie::class, 'id_uzytkownika', 'id');
     }
 
-    // Relacja: jeden użytkownik → wiele ulubionych
+    // Relacja: jeden użytkownik → wiele rekordów wynajmu (kalendarza rezerwacji)
+    public function wynajmy(): HasMany
+    {
+        return $this->hasMany(Wynajem::class, 'id_uzytkownika', 'id');
+    }
+
+    // Relacja: jeden użytkownik → wiele ulubionych egzemplarzy
     public function ulubione(): HasMany
     {
         return $this->hasMany(Ulubione::class, 'uzytkownik_id', 'id');
     }
 
-    // Sprawdza czy użytkownik ma rolę admina
+    // Relacja: jeden użytkownik → wiele naliczonych kar
+    public function kary(): HasMany
+    {
+        return $this->hasMany(NaliczoneKary::class, 'id_uzytkownika', 'id');
+    }
+
     public function isAdmin(): bool
     {
         return $this->role === 'admin';
     }
 
-    // Zwraca pełne imię i nazwisko
     public function getFullNameAttribute(): string
     {
         return trim("{$this->firstName} {$this->lastName}");
