@@ -4,7 +4,9 @@ import axios from 'axios';
 export const AuthContext = createContext(null);
 
 // Bazowy URL API — środowisko produkcyjne lub lokalne
-axios.defaults.baseURL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
+// W dev: Vite proxy przekierowuje /api → http://127.0.0.1:8000 (vite.config.js)
+// W prod: nginx obsługuje /api jako reverse proxy na Laravel
+axios.defaults.baseURL = import.meta.env.VITE_API_URL || '/api';
 
 // Interceptor 401 — automatyczne wylogowanie przy wygaśnięciu tokenu
 axios.interceptors.response.use(

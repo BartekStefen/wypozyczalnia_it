@@ -798,7 +798,7 @@ function TabKary() {
   const handleOplacona = async (id) => {
     try {
       await axios.patch(`/admin/kary/${id}/oplacona`);
-      setKary(prev => prev.map(k => k.id_szczegolow === id ? { ...k, czy_oplacona: 1 } : k));
+      setKary(prev => prev.map(k => k.id_kary === id ? { ...k, czy_oplacona: 1 } : k));
     } catch {}
   };
 
@@ -871,8 +871,8 @@ function TabKary() {
             {loading ? <TableSkeleton rows={6} cols={9} /> : kary.length === 0 ? (
               <tr><td colSpan={9} style={{ padding: "3rem", textAlign: "center", color: "#94a3b8" }}>Brak naliczonych kar</td></tr>
             ) : kary.map(k => (
-              <tr key={k.id_szczegolow} style={tab.tr}>
-                <td style={{ ...tab.td, fontFamily: "monospace", color: "#94a3b8", fontSize: "0.8rem" }}>#{k.id_szczegolow}</td>
+              <tr key={k.id_kary} style={tab.tr}>
+                <td style={{ ...tab.td, fontFamily: "monospace", color: "#94a3b8", fontSize: "0.8rem" }}>#{k.id_kary}</td>
                 <td style={tab.td}>
                   <div style={{ fontWeight: 600, fontSize: "0.875rem" }}>{k.klient_nazwa}</div>
                   <div style={{ fontSize: "0.78rem", color: "#94a3b8" }}>{k.klient_email}</div>
@@ -890,7 +890,7 @@ function TabKary() {
                 <td style={tab.td}>
                   {!k.czy_oplacona && (
                     <button style={{ ...tab.editBtn, background: "#f0fdf4", color: "#16a34a", fontWeight: 700, fontSize: "0.78rem", padding: "0.35rem 0.7rem" }}
-                      onClick={() => handleOplacona(k.id_szczegolow)}>
+                      onClick={() => handleOplacona(k.id_kary)}>
                       Oznacz opłaconą
                     </button>
                   )}

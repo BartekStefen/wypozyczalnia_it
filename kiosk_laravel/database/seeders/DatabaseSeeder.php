@@ -7,134 +7,131 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 /**
- * Seeder wypełniający bazę przykładowymi danymi do testów.
+ * Seeder danych testowych dla Kiosk IT.
+ *
+ * Używa INSERT IGNORE zamiast insertOrIgnore() — kompatybilny z MariaDB 10.x.
+ * Bezpieczny do wielokrotnego uruchomienia.
+ *
+ * Uruchomienie: php artisan db:seed
  */
 class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // ── Modele sprzętu (marki + nazwy) ─────────────────────────────
-        // idempotentne: insertOrIgnore nie duplikuje przy ponownym uruchomieniu.
+        // ── Modele sprzętu ──────────────────────────────────────────────
+        // Wzorce produktów — marka + nazwa modelu (bez ceny, bez stanu fizycznego)
         $modele = [
-            ['marka' => 'Dell',    'nazwa_modelu' => 'Latitude 5420'],
-            ['marka' => 'Dell',    'nazwa_modelu' => 'XPS 15'],
-            ['marka' => 'Apple',   'nazwa_modelu' => 'MacBook Pro 14'],
-            ['marka' => 'Lenovo',  'nazwa_modelu' => 'ThinkPad X1 Carbon'],
-            ['marka' => 'DJI',     'nazwa_modelu' => 'Mavic 3 Pro'],
-            ['marka' => 'DJI',     'nazwa_modelu' => 'Mini 3 Pro'],
-            ['marka' => 'Sony',    'nazwa_modelu' => 'A7 IV'],
-            ['marka' => 'Canon',   'nazwa_modelu' => 'EOS R6 Mark II'],
-            ['marka' => 'Epson',   'nazwa_modelu' => 'EB-L200F'],
-            ['marka' => 'Samsung', 'nazwa_modelu' => 'Galaxy Tab S9'],
-            ['marka' => 'Rode',    'nazwa_modelu' => 'Wireless GO II'],
-            ['marka' => 'Manfrotto','nazwa_modelu'=> 'Befree Advanced'],
-            ['marka' => 'GoPro',   'nazwa_modelu' => 'HERO 12 Black'],
-            ['marka' => 'HP',      'nazwa_modelu' => 'EliteBook 840 G9'],
-            ['marka' => 'MSI',     'nazwa_modelu' => 'Katana GF66'],
+            [1,  'Dell',     'Latitude 5420'],
+            [2,  'Dell',     'XPS 15'],
+            [3,  'Apple',    'MacBook Pro 14'],
+            [4,  'Lenovo',   'ThinkPad X1 Carbon'],
+            [5,  'DJI',      'Mavic 3 Pro'],
+            [6,  'DJI',      'Mini 3 Pro'],
+            [7,  'Sony',     'A7 IV'],
+            [8,  'Canon',    'EOS R6 Mark II'],
+            [9,  'Epson',    'EB-L200F'],
+            [10, 'Samsung',  'Galaxy Tab S9'],
+            [11, 'Rode',     'Wireless GO II'],
+            [12, 'Manfrotto','Befree Advanced'],
+            [13, 'GoPro',    'HERO 12 Black'],
+            [14, 'HP',       'EliteBook 840 G9'],
+            [15, 'MSI',      'Katana GF66'],
         ];
 
-        foreach ($modele as $m) {
-            DB::table('modele_sprzetu')->insertOrIgnore($m);
+        foreach ($modele as [$id, $marka, $model]) {
+            DB::statement("INSERT IGNORE INTO modele_sprzetu (id_modelu, marka, nazwa_modelu) VALUES (?, ?, ?)", [$id, $marka, $model]);
         }
 
         // ── Egzemplarze ─────────────────────────────────────────────────
-        // Każdy egzemplarz to fizyczna sztuka sprzętu z numerem seryjnym.
-        // Cena dzienna jest ceną brutto (z VAT 23%).
-        $egzemplarze = [
-            ['id_modelu' => 1,  'numer_seryjny' => 'SN-DELL-001', 'status' => 'Dostępny',    'cena_wypozyczenia_dzien' => 50.00],
-            ['id_modelu' => 2,  'numer_seryjny' => 'SN-DELL-002', 'status' => 'Dostępny',    'cena_wypozyczenia_dzien' => 75.00],
-            ['id_modelu' => 3,  'numer_seryjny' => 'SN-MBP-001',  'status' => 'Wypożyczony', 'cena_wypozyczenia_dzien' => 140.00],
-            ['id_modelu' => 4,  'numer_seryjny' => 'SN-LEN-001',  'status' => 'Dostępny',    'cena_wypozyczenia_dzien' => 70.00],
-            ['id_modelu' => 5,  'numer_seryjny' => 'SN-MAV3-001', 'status' => 'Dostępny',    'cena_wypozyczenia_dzien' => 250.00],
-            ['id_modelu' => 6,  'numer_seryjny' => 'SN-MINI3-001','status' => 'Dostępny',    'cena_wypozyczenia_dzien' => 120.00],
-            ['id_modelu' => 7,  'numer_seryjny' => 'SN-SONY-001', 'status' => 'Dostępny',    'cena_wypozyczenia_dzien' => 140.00],
-            ['id_modelu' => 8,  'numer_seryjny' => 'SN-CANON-001','status' => 'Dostępny',    'cena_wypozyczenia_dzien' => 160.00],
-            ['id_modelu' => 9,  'numer_seryjny' => 'SN-EPSON-001','status' => 'Dostępny',    'cena_wypozyczenia_dzien' => 90.00],
-            ['id_modelu' => 10, 'numer_seryjny' => 'SN-SAM-001',  'status' => 'Dostępny',    'cena_wypozyczenia_dzien' => 55.00],
-            ['id_modelu' => 11, 'numer_seryjny' => 'SN-RODE-001', 'status' => 'Dostępny',    'cena_wypozyczenia_dzien' => 35.00],
-            ['id_modelu' => 12, 'numer_seryjny' => 'SN-MANF-001', 'status' => 'Serwis',      'cena_wypozyczenia_dzien' => 27.00],
-            ['id_modelu' => 13, 'numer_seryjny' => 'SN-GOPRO-001','status' => 'Dostępny',    'cena_wypozyczenia_dzien' => 45.00],
-            ['id_modelu' => 14, 'numer_seryjny' => 'SN-HP-001',   'status' => 'Dostępny',    'cena_wypozyczenia_dzien' => 65.00],
-            ['id_modelu' => 15, 'numer_seryjny' => 'SN-MSI-001',  'status' => 'Dostępny',    'cena_wypozyczenia_dzien' => 90.00],
-        ];
-
-        // Wstaw tylko jeśli tabela egzemplarzy jest pusta
+        // Fizyczne sztuki sprzętu — każda ma numer seryjny i własną cenę
         if (DB::table('egzemplarze')->count() === 0) {
-            DB::table('egzemplarze')->insert($egzemplarze);
+            $egzemplarze = [
+                [1,  'SN-DELL-001',  'Dostępny',    50.00],
+                [2,  'SN-DELL-002',  'Dostępny',    75.00],
+                [3,  'SN-MBP-001',   'Wypożyczony', 140.00],
+                [4,  'SN-LEN-001',   'Dostępny',    70.00],
+                [5,  'SN-MAV3-001',  'Dostępny',    250.00],
+                [6,  'SN-MINI3-001', 'Dostępny',    120.00],
+                [7,  'SN-SONY-001',  'Dostępny',    140.00],
+                [8,  'SN-CANON-001', 'Dostępny',    160.00],
+                [9,  'SN-EPSON-001', 'Dostępny',    90.00],
+                [10, 'SN-SAM-001',   'Dostępny',    55.00],
+                [11, 'SN-RODE-001',  'Dostępny',    35.00],
+                [12, 'SN-MANF-001',  'Serwis',      27.00],
+                [13, 'SN-GOPRO-001', 'Dostępny',    45.00],
+                [14, 'SN-HP-001',    'Dostępny',    65.00],
+                [15, 'SN-MSI-001',   'Dostępny',    90.00],
+            ];
+            foreach ($egzemplarze as [$idModelu, $sn, $status, $cena]) {
+                DB::statement(
+                    "INSERT IGNORE INTO egzemplarze (id_modelu, numer_seryjny, status, cena_wypozyczenia_dzien) VALUES (?, ?, ?, ?)",
+                    [$idModelu, $sn, $status, $cena]
+                );
+            }
         }
 
-        // ── Konto admina + testowy klient ───────────────────────────────
-        DB::table('uzytkownicy')->insertOrIgnore([
-            'firstName'  => 'Admin',
-            'lastName'   => 'System',
-            'email'      => 'admin@kioskIT.pl',
-            'password'   => Hash::make('Admin1234!'),
-            'role'       => 'admin',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        // ── Użytkownicy ──────────────────────────────────────────────────
+        DB::statement(
+            "INSERT IGNORE INTO uzytkownicy (firstName, lastName, email, password, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
+            ['Admin', 'System', 'admin@kioskIT.pl', Hash::make('Admin1234!'), 'admin']
+        );
+        DB::statement(
+            "INSERT IGNORE INTO uzytkownicy (firstName, lastName, email, password, phone, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())",
+            ['Jan', 'Kowalski', 'jan.kowalski@test.pl', Hash::make('Test1234!'), '600 100 200', 'klient']
+        );
 
-        DB::table('uzytkownicy')->insertOrIgnore([
-            'firstName'  => 'Jan',
-            'lastName'   => 'Kowalski',
-            'email'      => 'jan.kowalski@test.pl',
-            'password'   => Hash::make('Test1234!'),
-            'role'       => 'klient',
-            'phone'      => '600 100 200',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        // ── Kategorie ───────────────────────────────────────────────────
+        // ── Kategorie sprzętu ────────────────────────────────────────────
         $kategorie = [
-            ['id_kategorii' => 1,  'nazwa' => 'Laptopy',     'id_rodzica' => null],
-            ['id_kategorii' => 2,  'nazwa' => 'Drony',       'id_rodzica' => null],
-            ['id_kategorii' => 3,  'nazwa' => 'Aparaty',     'id_rodzica' => null],
-            ['id_kategorii' => 4,  'nazwa' => 'Projektory',  'id_rodzica' => null],
-            ['id_kategorii' => 5,  'nazwa' => 'Tablety',     'id_rodzica' => null],
-            ['id_kategorii' => 6,  'nazwa' => 'Akcesoria',   'id_rodzica' => null],
-            ['id_kategorii' => 10, 'nazwa' => 'Laptopy biznesowe',  'id_rodzica' => 1],
-            ['id_kategorii' => 11, 'nazwa' => 'Laptopy gamingowe',  'id_rodzica' => 1],
-            ['id_kategorii' => 20, 'nazwa' => 'Drony fotograficzne','id_rodzica' => 2],
-            ['id_kategorii' => 30, 'nazwa' => 'Aparaty bezlusterkowe','id_rodzica' => 3],
+            [1,  'Laptopy',              null],
+            [2,  'Drony',                null],
+            [3,  'Aparaty',              null],
+            [4,  'Projektory',           null],
+            [5,  'Tablety',              null],
+            [6,  'Akcesoria',            null],
+            [10, 'Laptopy biznesowe',    1],
+            [11, 'Laptopy gamingowe',    1],
+            [20, 'Drony fotograficzne',  2],
+            [30, 'Aparaty bezlusterkowe',3],
         ];
-
-        foreach ($kategorie as $k) {
-            DB::table('kategorie_sprzetu')->insertOrIgnore($k);
+        foreach ($kategorie as [$id, $nazwa, $rodzic]) {
+            DB::statement(
+                "INSERT IGNORE INTO kategorie_sprzetu (id_kategorii, nazwa, id_rodzica) VALUES (?, ?, ?)",
+                [$id, $nazwa, $rodzic]
+            );
         }
 
-        // ── Powiązania modeli z kategoriami ─────────────────────────────
-        $katModele = [
-            ['id_kategorii' => 1,  'id_modelu' => 1],
-            ['id_kategorii' => 10, 'id_modelu' => 1],
-            ['id_kategorii' => 1,  'id_modelu' => 2],
-            ['id_kategorii' => 10, 'id_modelu' => 2],
-            ['id_kategorii' => 1,  'id_modelu' => 3],
-            ['id_kategorii' => 1,  'id_modelu' => 4],
-            ['id_kategorii' => 10, 'id_modelu' => 4],
-            ['id_kategorii' => 2,  'id_modelu' => 5],
-            ['id_kategorii' => 20, 'id_modelu' => 5],
-            ['id_kategorii' => 2,  'id_modelu' => 6],
-            ['id_kategorii' => 20, 'id_modelu' => 6],
-            ['id_kategorii' => 3,  'id_modelu' => 7],
-            ['id_kategorii' => 30, 'id_modelu' => 7],
-            ['id_kategorii' => 3,  'id_modelu' => 8],
-            ['id_kategorii' => 30, 'id_modelu' => 8],
-            ['id_kategorii' => 4,  'id_modelu' => 9],
-            ['id_kategorii' => 5,  'id_modelu' => 10],
-            ['id_kategorii' => 6,  'id_modelu' => 11],
-            ['id_kategorii' => 6,  'id_modelu' => 12],
-            ['id_kategorii' => 6,  'id_modelu' => 13],
-            ['id_kategorii' => 1,  'id_modelu' => 14],
-            ['id_kategorii' => 10, 'id_modelu' => 14],
-            ['id_kategorii' => 1,  'id_modelu' => 15],
-            ['id_kategorii' => 11, 'id_modelu' => 15],
+        // ── Powiązania modeli z kategoriami ──────────────────────────────
+        $km = [
+            [1,1],[10,1],[1,2],[10,2],[1,3],[1,4],[10,4],
+            [2,5],[20,5],[2,6],[20,6],
+            [3,7],[30,7],[3,8],[30,8],
+            [4,9],[5,10],[6,11],[6,12],[6,13],
+            [1,14],[10,14],[1,15],[11,15],
         ];
+        foreach ($km as [$idKat, $idMod]) {
+            DB::statement(
+                "INSERT IGNORE INTO kategorie_modele (id_kategorii, id_modelu) VALUES (?, ?)",
+                [$idKat, $idMod]
+            );
+        }
 
-        foreach ($katModele as $km) {
-            DB::table('kategorie_modele')->insertOrIgnore($km);
+        // ── Rodzaje kar ──────────────────────────────────────────────────
+        $kary = [
+            [1, 'Uszkodzenie sprzętu',           500.00],
+            [2, 'Przekroczenie terminu zwrotu',    50.00],
+            [3, 'Zgubienie akcesoriów',           200.00],
+            [4, 'Brak oryginalnego opakowania',    80.00],
+            [5, 'Brud lub zabrudzenie sprzętu',    30.00],
+        ];
+        foreach ($kary as [$id, $nazwa, $kwota]) {
+            DB::statement(
+                "INSERT IGNORE INTO rodzaje_kar (id_rodzaju, nazwa_przewinienia, domyslna_kwota) VALUES (?, ?, ?)",
+                [$id, $nazwa, $kwota]
+            );
         }
 
         $this->command->info('✅ Seeder zakończony — baza wypełniona danymi testowymi.');
+        $this->command->info('   Admin: admin@kioskIT.pl / Admin1234!');
+        $this->command->info('   Klient: jan.kowalski@test.pl / Test1234!');
     }
 }
