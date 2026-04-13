@@ -8,16 +8,12 @@ use Illuminate\Support\Facades\DB;
 /**
  * Kontroler adresów — zarządza adresami odbioru/zwrotu sprzętu użytkownika.
  *
- * Tabela adresy_uzytkownikow nie istnieje w oryginalnym schemacie —
- * musi być utworzona przez migrację migracja_kary_adresy.sql.
- *
  * Każdy użytkownik może mieć wiele adresów, jeden oznaczony jako domyślny.
- * Logika domyślności: przy zapisie pierwszego adresu automatycznie staje się domyślny.
- * Zmiana domyślnego: reset wszystkich, ustawienie nowego (dwa UPDATE w jednej transakcji).
+ * Przy dodaniu pierwszego adresu staje się on automatycznie domyślnym.
+ * Zmiana domyślnego to dwie operacje w transakcji: reset wszystkich → SET nowego.
  */
 class AdresController extends Controller
 {
-    // Zwraca adresy zalogowanego użytkownika posortowane: domyślny pierwszy
     public function index(Request $request)
     {
         $adresy = DB::table('adresy_uzytkownikow')
@@ -29,14 +25,13 @@ class AdresController extends Controller
         return response()->json($adresy);
     }
 
-    // Dodaje nowy adres — pierwszy adres użytkownika staje się automatycznie domyślnym
     public function store(Request $request)
     {
         $request->validate([
-            'etykieta'    => 'nullable|string|max:50',
-            'ulica'       => 'required|string|max:150',
-            'kod_pocztowy'=> 'required|string|max:10',
-            'miasto'      => 'required|string|max:80',
+            'etykieta'     => 'nullable|string|max:50',
+            'ulica'        => 'required|string|max:150',
+            'kod_pocztowy' => 'required|string|max:10',
+            'miasto'       => 'required|string|max:80',
         ]);
 
         $uid        = $request->user()->id;
@@ -55,7 +50,6 @@ class AdresController extends Controller
         return response()->json(['id_adresu' => $id, 'message' => 'Adres dodany.'], 201);
     }
 
-    // Usuwa adres — weryfikacja własności chroni przed usunięciem cudzego adresu
     public function destroy(Request $request, int $id)
     {
         $usunieto = DB::table('adresy_uzytkownikow')
@@ -70,7 +64,6 @@ class AdresController extends Controller
         return response()->json(['message' => 'Adres usunięty.']);
     }
 
-    // Ustawia adres domyślny — reset wszystkich, potem SET dla wybranego
     public function ustawDomyslny(Request $request, int $id)
     {
         $uid = $request->user()->id;

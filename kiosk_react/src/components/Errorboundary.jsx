@@ -14,56 +14,20 @@ const CSS = `
   .error-btn-ghost:hover { border-color: #2563eb; color: #2563eb; }
 `;
 
-// Strona 404 — nieznana trasa
 export function NotFound() {
   return (
     <div className="error-page">
       <style>{CSS}</style>
       <div className="error-card">
-        <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🔍</div>
         <div className="error-code">404</div>
         <h1 className="error-title">Strona nie istnieje</h1>
-        <p className="error-desc">
-          Podany adres URL nie istnieje lub strona została przeniesiona.<br />
-          Sprawdź czy adres jest poprawny.
-        </p>
-        <Link to="/" className="error-btn">← Wróć na stronę główną</Link>
-        <Link to="/katalog" className="error-btn-ghost">Przeglądaj katalog</Link>
+        <p className="error-desc">Sprawdź czy adres URL jest poprawny, lub wróć na stronę główną.</p>
+        <Link to="/" className="error-btn">← Strona główna</Link>
       </div>
     </div>
   );
 }
 
-// Strona błędu — wyświetlana przez ErrorBoundary przy niezłapanym wyjątku
-export function ErrorPage({ error, onReset }) {
-  return (
-    <div className="error-page">
-      <style>{CSS}</style>
-      <div className="error-card">
-        <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>⚠️</div>
-        <div className="error-code">Błąd</div>
-        <h1 className="error-title">Coś poszło nie tak</h1>
-        <p className="error-desc">
-          Wystąpił nieoczekiwany błąd aplikacji. Spróbuj odświeżyć stronę.<br />
-          {error?.message && (
-            <code style={{ fontSize: '0.78rem', background: '#f1f5f9', padding: '0.2rem 0.5rem', borderRadius: 4 }}>
-              {error.message}
-            </code>
-          )}
-        </p>
-        <button onClick={onReset} className="error-btn" style={{ border: 'none', cursor: 'pointer' }}>
-          🔄 Odśwież
-        </button>
-        <Link to="/" className="error-btn-ghost">Strona główna</Link>
-      </div>
-    </div>
-  );
-}
-
-/**
- * ErrorBoundary — łapie niezłapane wyjątki Reacta i wyświetla przyjazną stronę błędu.
- * Użycie w App.jsx: <ErrorBoundary><App /></ErrorBoundary>
- */
 export class ErrorBoundary extends Component {
   constructor(props) {
     super(props);
@@ -74,21 +38,27 @@ export class ErrorBoundary extends Component {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error, info) {
-    // Tutaj można podpiąć Sentry lub inny monitoring błędów
-    console.error('[ErrorBoundary]', error, info);
-  }
-
   render() {
     if (this.state.hasError) {
       return (
-        <ErrorPage
-          error={this.state.error}
-          onReset={() => {
-            this.setState({ hasError: false, error: null });
-            window.location.href = '/';
-          }}
-        />
+        <div className="error-page">
+          <style>{CSS}</style>
+          <div className="error-card">
+            <div className="error-code">!</div>
+            <h1 className="error-title">Coś poszło nie tak</h1>
+            <p className="error-desc">
+              Wystąpił nieoczekiwany błąd aplikacji. Odśwież stronę lub wróć do katalogu.
+            </p>
+            <Link to="/" className="error-btn">← Wróć do katalogu</Link>
+            <button
+              className="error-btn-ghost"
+              onClick={() => window.location.reload()}
+              style={{ background: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              Odśwież
+            </button>
+          </div>
+        </div>
       );
     }
     return this.props.children;

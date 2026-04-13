@@ -10,18 +10,15 @@ use Illuminate\Support\Facades\Log;
 /**
  * Kontroler systemu kar finansowych.
  *
- * Schemat tabeli naliczone_kary po migracji:
- *   id_kary (AUTO_INCREMENT PK) | id_szczegolow (FK → szczegoly_wypozyczenia) |
- *   id_rodzaju | id_uzytkownika | id_wypozyczenia | ostateczna_kwota |
- *   opis | czy_oplacona | email_wyslany | created_at
+ * Przepływ naliczenia kary:
+ *   Admin wskazuje wypożyczenie → wybiera rodzaj kary i kwotę
+ *   → zapis do naliczone_kary → opcjonalna wysyłka e-mail do klienta
  *
- * Relacja do wypożyczenia jest redundantna (można by ją wyciągnąć przez JOIN
- * przez szczegoly_wypozyczenia → wypozyczenia), ale przechowywana bezpośrednio
- * dla wydajności filtrowania w panelu admina.
+ * E-mail jest nieblokujący — kara jest zapisana w bazie nawet jeśli
+ * serwer pocztowy jest niedostępny. Błąd maila jest tylko logowany.
  */
 class KaryController extends Controller
 {
-    // Słownik rodzajów kar z domyślnymi kwotami — wypełniany przez Seeder
     public function rodzaje()
     {
         return response()->json(
@@ -29,7 +26,6 @@ class KaryController extends Controller
         );
     }
 
-    // Lista kar z paginacją — łączy dane z 6 tabel dla pełnego kontekstu
     public function index(Request $request)
     {
         $query = DB::table('naliczone_kary as nk')
@@ -62,14 +58,9 @@ class KaryController extends Controller
     }
 
     /**
-     * Nakłada karę na klienta powiązanego z wypożyczeniem.
-     *
-     * Identyfikacja adresata e-mail:
-     *   COALESCE(u.email, k.email) — obsługuje konto zarejestrowane i gości.
-     *   Goście nie mają konta (id_uzytkownika = NULL), ale mają email w tabeli klienci.
-     *
-     * id_szczegolow z tabeli szczegoly_wypozyczenia jest wymagany przez FK constraint.
-     * Jeśli wypożyczenie ma wiele pozycji (szczegółów), bierzemy pierwsze.
+     * Nakłada karę — identyfikuje klienta przez COALESCE(konto, gość).
+     * id_szczegolow = FK do szczegoly_wypozyczenia — bierzemy pierwszy
+     * szczegół danego wypożyczenia jako punkt powiązania.
      */
     public function store(Request $request)
     {
@@ -80,17 +71,15 @@ class KaryController extends Controller
             'opis'             => 'nullable|string|max:500',
         ]);
 
-        // Pobierz dane wypożyczenia z klientem i pierwszym egzemplarzem
         $wypozyczenie = DB::table('wypozyczenia as w')
-            ->leftJoin('uzytkownicy as u',            'w.id_uzytkownika', '=', 'u.id')
-            ->leftJoin('klienci as k',                'w.id_klienta',     '=', 'k.id_klienta')
-            ->leftJoin('szczegoly_wypozyczenia as sw','w.id_wypozyczenia','=', 'sw.id_wypozyczenia')
-            ->leftJoin('egzemplarze as e',            'sw.id_egzemplarza','=', 'e.id_egzemplarza')
-            ->leftJoin('modele_sprzetu as ms',        'e.id_modelu',      '=', 'ms.id_modelu')
+            ->leftJoin('uzytkownicy as u', 'w.id_uzytkownika', '=', 'u.id')
+            ->leftJoin('klienci as k',     'w.id_klienta',     '=', 'k.id_klienta')
+            ->leftJoin('szczegoly_wypozyczenia as sw', 'w.id_wypozyczenia', '=', 'sw.id_wypozyczenia')
+            ->leftJoin('egzemplarze as e',  'sw.id_egzemplarza', '=', 'e.id_egzemplarza')
+            ->leftJoin('modele_sprzetu as ms', 'e.id_modelu', '=', 'ms.id_modelu')
             ->where('w.id_wypozyczenia', $request->id_wypozyczenia)
             ->select(
-                'w.id_wypozyczenia',
-                'w.id_uzytkownika',
+                'w.id_wypozyczenia', 'w.id_uzytkownika',
                 DB::raw("COALESCE(u.firstName, k.imie,    'Gość') as imie"),
                 DB::raw("COALESCE(u.lastName,  k.nazwisko, '')    as nazwisko"),
                 DB::raw("COALESCE(u.email,     k.email)           as email"),
@@ -105,7 +94,6 @@ class KaryController extends Controller
 
         $rodzaj = DB::table('rodzaje_kar')->where('id_rodzaju', $request->id_rodzaju)->first();
 
-        // id_szczegolow = 0 jako placeholder gdy brak szczegółów (dane historyczne)
         DB::table('naliczone_kary')->insert([
             'id_szczegolow'    => $wypozyczenie->id_szczegolow ?? 0,
             'id_rodzaju'       => $request->id_rodzaju,
@@ -118,11 +106,9 @@ class KaryController extends Controller
             'created_at'       => now(),
         ]);
 
-        // Pobierz id_kary ostatnio wstawionego rekordu
-        $idKary = DB::getPdo()->lastInsertId();
-
-        // Wysyłka e-mail — opcjonalna, nie blokuje odpowiedzi API
+        $idKary       = DB::getPdo()->lastInsertId();
         $emailWyslany = false;
+
         if ($wypozyczenie->email) {
             try {
                 Mail::send('emails.kara', [
@@ -132,33 +118,23 @@ class KaryController extends Controller
                     'kwota'        => number_format((float) $request->ostateczna_kwota, 2, ',', ' '),
                     'opis'         => $request->opis,
                 ], function ($m) use ($wypozyczenie, $rodzaj) {
-                    $m->to($wypozyczenie->email,
-                           trim("{$wypozyczenie->imie} {$wypozyczenie->nazwisko}"))
+                    $m->to($wypozyczenie->email, trim("{$wypozyczenie->imie} {$wypozyczenie->nazwisko}"))
                       ->subject("Kiosk IT — naliczono karę: {$rodzaj->nazwa_przewinienia}");
                 });
 
-                DB::table('naliczone_kary')
-                    ->where('id_kary', $idKary)
-                    ->update(['email_wyslany' => 1]);
-
+                DB::table('naliczone_kary')->where('id_kary', $idKary)->update(['email_wyslany' => 1]);
                 $emailWyslany = true;
             } catch (\Exception $e) {
                 Log::warning("Mail kary #{$idKary} nie wysłany: " . $e->getMessage());
             }
         }
 
-        return response()->json([
-            'message'       => 'Kara naliczona pomyślnie.',
-            'email_wyslany' => $emailWyslany,
-        ], 201);
+        return response()->json(['message' => 'Kara naliczona.', 'email_wyslany' => $emailWyslany], 201);
     }
 
-    // Oznacza karę jako opłaconą — szuka po id_kary (własnym PK)
     public function oplacona(int $idKary)
     {
-        $updated = DB::table('naliczone_kary')
-            ->where('id_kary', $idKary)
-            ->update(['czy_oplacona' => 1]);
+        $updated = DB::table('naliczone_kary')->where('id_kary', $idKary)->update(['czy_oplacona' => 1]);
 
         if (!$updated) {
             return response()->json(['message' => 'Kara nie istnieje.'], 404);

@@ -12,20 +12,15 @@ use Illuminate\Support\Facades\DB;
  *   Dostępny → zgłoś() → Serwis    (blokuje rezerwacje klientów)
  *   Serwis   → przywroc() → Dostępny (odblokowuje rezerwacje)
  *
- * Skutek uboczny zmiany statusu na 'Serwis':
- *   SprzetController::index() nie filtruje po statusie domyślnie, ale klienci
- *   widzą statusbadge 'Serwis' na karcie i przycisk rezerwacji jest nieaktywny
- *   (ProduktSzczegoly sprawdza item.status === 'Dostępny').
- *
- * Tabele: zgloszenia_serwisowe + serwis_egzemplarze (relacja M:1)
+ * Zmiana statusu na 'Serwis' jest natychmiastowa — klienci przestają
+ * widzieć przycisk rezerwacji zaraz po zgłoszeniu usterki.
  */
 class SerwisController extends Controller
 {
-    // Lista aktywnych zgłoszeń serwisowych z danymi sprzętu
     public function index()
     {
         $serwis = DB::table('zgloszenia_serwisowe as zs')
-            ->join('serwis_egzemplarze as se', 'zs.id_serwisu',   '=', 'se.id_serwisu')
+            ->join('serwis_egzemplarze as se', 'zs.id_serwisu',    '=', 'se.id_serwisu')
             ->join('egzemplarze as e',          'se.id_egzemplarza','=', 'e.id_egzemplarza')
             ->join('modele_sprzetu as ms',       'e.id_modelu',     '=', 'ms.id_modelu')
             ->select(
@@ -45,13 +40,7 @@ class SerwisController extends Controller
     }
 
     /**
-     * Zgłasza egzemplarz do serwisu.
-     *
-     * Kolejność operacji jest ważna:
-     *   1. Blokada statusu (Serwis) — natychmiastowy efekt dla klientów
-     *   2. Zapis zgłoszenia — historia usterki
-     *   3. Powiązanie serwis_egzemplarze — jeden serwis może dotyczyć jednego egzemplarza
-     *
+     * Zgłasza egzemplarz do serwisu i blokuje go dla klientów.
      * Wypożyczonego sprzętu nie można zgłosić — musi być najpierw zwrócony.
      */
     public function zglos(Request $request)
@@ -68,12 +57,11 @@ class SerwisController extends Controller
 
         if ($egz->status === 'Wypożyczony') {
             return response()->json([
-                'message' => 'Nie można zgłosić do serwisu sprzętu aktualnie wypożyczonego. Poczekaj na zwrot.'
+                'message' => 'Nie można zgłosić do serwisu sprzętu aktualnie wypożyczonego.'
             ], 409);
         }
 
         return DB::transaction(function () use ($request) {
-            // Zmiana statusu — klienci natychmiast przestają widzieć sprzęt jako dostępny
             DB::table('egzemplarze')
                 ->where('id_egzemplarza', $request->id_egzemplarza)
                 ->update(['status' => 'Serwis']);
@@ -89,27 +77,19 @@ class SerwisController extends Controller
                 'koszt_naprawy'  => $request->koszt_naprawy,
             ]);
 
-            return response()->json([
-                'message'    => 'Sprzęt zgłoszony do serwisu. Status zmieniony na Serwis.',
-                'id_serwisu' => $idSerwisu,
-            ], 201);
+            return response()->json(['message' => 'Zgłoszono do serwisu.', 'id_serwisu' => $idSerwisu], 201);
         });
     }
 
     /**
-     * Przywraca sprzęt po naprawie.
-     *
-     * Zmiana statusu z 'Serwis' → 'Dostępny' sprawia że sprzęt natychmiast
-     * wraca do katalogu bez żadnych dodatkowych operacji.
+     * Przywraca sprzęt po naprawie — zmiana statusu 'Serwis' → 'Dostępny'
+     * sprawia że egzemplarz natychmiast wraca do katalogu.
      */
     public function przywroc(Request $request, int $idSerwisu)
     {
-        $request->validate([
-            'koszt_naprawy' => 'nullable|numeric|min:0',
-        ]);
+        $request->validate(['koszt_naprawy' => 'nullable|numeric|min:0']);
 
-        $powiazanie = DB::table('serwis_egzemplarze')
-            ->where('id_serwisu', $idSerwisu)->first();
+        $powiazanie = DB::table('serwis_egzemplarze')->where('id_serwisu', $idSerwisu)->first();
 
         if (!$powiazanie) {
             return response()->json(['message' => 'Zgłoszenie serwisowe nie istnieje.'], 404);
@@ -126,7 +106,7 @@ class SerwisController extends Controller
                     ->update(['koszt_naprawy' => $request->koszt_naprawy]);
             }
 
-            return response()->json(['message' => 'Sprzęt przywrócony do katalogu jako Dostępny.']);
+            return response()->json(['message' => 'Sprzęt przywrócony jako Dostępny.']);
         });
     }
 }

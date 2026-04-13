@@ -1,20 +1,5 @@
 <?php
 
-/**
- * bootstrap/app.php — punkt startowy aplikacji Laravel.
- *
- * Rejestracja middleware w odpowiedniej kolejności:
- *   1. HandleCors — musi być PRZED każdym innym middleware, żeby
- *      odpowiedź preflight OPTIONS wróciła do przeglądarki natychmiast
- *      bez przetwarzania reszty stosu.
- *
- *   2. EnsureFrontendRequestsAreStateful — Sanctum, dla session-based auth
- *
- *   3. ThrottleRequests — ograniczenie liczby żądań (rate limiting)
- *
- *   4. SubstituteBindings — wiązanie modeli z parametrami tras
- */
-
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -28,24 +13,24 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
 
-        // CORS musi być pierwszy w kolejce — odpowiada na OPTIONS przed Auth
+        // CORS musi być pierwszy — odpowiada na OPTIONS preflight zanim Sanctum sprawdzi sesję
         $middleware->prepend(\Illuminate\Http\Middleware\HandleCors::class);
 
-        // Aliasy middleware używane w api.php
         $middleware->alias([
             'auth'     => \Illuminate\Auth\Middleware\Authenticate::class,
             'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
             'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
+            'isAdmin'  => \App\Http\Middleware\IsAdmin::class,
         ]);
 
-        // Middleware grupy API (dodawane automatycznie do tras w api.php)
         $middleware->api(prepend: [
             \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
         ]);
 
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        // Globalny handler wyjątków — zwraca JSON dla tras API zamiast HTML
+
+        // Wszystkie wyjątki na /api/* wracają jako JSON zamiast strony HTML z błędem
         $exceptions->render(function (\Illuminate\Auth\AuthenticationException $e, $request) {
             if ($request->is('api/*')) {
                 return response()->json(['message' => 'Brak autoryzacji. Zaloguj się.'], 401);
@@ -66,5 +51,17 @@ return Application::configure(basePath: dirname(__DIR__))
                 return response()->json(['message' => 'Zasób nie istnieje.'], 404);
             }
         });
+
+        // W trybie debug zwraca szczegóły wyjątku jako JSON — pomocne przy diagnozie
+        $exceptions->render(function (\Throwable $e, $request) {
+            if ($request->is('api/*') && config('app.debug')) {
+                return response()->json([
+                    'message' => $e->getMessage(),
+                    'file'    => $e->getFile(),
+                    'line'    => $e->getLine(),
+                ], 500);
+            }
+        });
+
     })
     ->create();
